@@ -7,6 +7,7 @@ let log_mode = ref(false);
 let server_secret_key_file = ref("");
 let server_secret_key = ref("");
 let router_secret_key = ref("");
+let router_public_key = ref("");
 
 type t = {
   zmq_ctx: Protocol.Zest.t,
@@ -47,6 +48,11 @@ let data_from_file = (file) =>
 
 let set_server_key = (file) => server_secret_key := data_from_file(file);
 
+let setup_router_keys = () => {
+  let (public_key, private_key) = ZMQ.Curve.keypair();
+  router_secret_key := private_key;
+  router_public_key := public_key;
+};
 
 let ack = (kind) =>
   Ack.(
@@ -133,6 +139,7 @@ let rec run_server = (ctx) => {
 let setup_server = () => {
   parse_cmdline();
   log_mode^ ? Logger.init () : ();
+  setup_router_keys();
   set_server_key(server_secret_key_file^);
   let zmq_ctx =
     Protocol.Zest.create(
