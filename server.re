@@ -96,8 +96,8 @@ let handle_msg = (msg, ctx) =>
       let (options, r3) = handle_options(oc, r2);
       let payload = Bitstring.string_of_bitstring(r3);
       switch code {
-      | 1 => payload |> Lwt.return;
-      | 2 => payload |> Lwt.return;
+      | 1 => ack(Ack.Payload(69,"w00t!"));
+      | 2 => ack(Ack.Code(65));
       | _ => failwith("invalid code")
       };
     }
