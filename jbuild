@@ -1,5 +1,5 @@
 (jbuild_version 1)
   
 (executables
-  ((libraries (protocol bos))
+  ((libraries (protocol bos str))
     (names (server))))
