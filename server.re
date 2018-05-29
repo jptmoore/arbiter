@@ -86,6 +86,20 @@ let handle_options = (oc, bits) => {
   (options, handle(oc, bits));
 };
 
+let handle_get = (ctx, prov) => {
+  ack(Ack.Payload(69,"w00t!"));
+};
+
+let handle_post = (ctx, prov, payload) => {
+  let uri_path = Prov.uri_path(prov);
+  let path_list = String.split_on_char('/', uri_path);
+  switch path_list {
+  | ["", "token"] => ack(Ack.Payload(69,payload));
+  | _ => ack(Ack.Code(128)); 
+  };
+  
+};
+
 let handle_msg = (msg, ctx) =>
   Logger.debug_f("handle_msg", Printf.sprintf("Received:\n%s", msg))
   >>= (
@@ -95,9 +109,10 @@ let handle_msg = (msg, ctx) =>
       let (token, r2) = Protocol.Zest.handle_token(r1, tkl);
       let (options, r3) = handle_options(oc, r2);
       let payload = Bitstring.string_of_bitstring(r3);
+      let prov = Prov.create(~code=code, ~options=options, ~token=token);
       switch code {
-      | 1 => ack(Ack.Payload(69,"w00t!"));
-      | 2 => ack(Ack.Code(65));
+      | 1 => handle_get(ctx, prov);
+      | 2 => handle_post(ctx, prov, payload);
       | _ => failwith("invalid code")
       };
     }
