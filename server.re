@@ -106,20 +106,11 @@ let handle_msg = (msg, ctx) =>
 let server = (ctx) => {
   open Logger;
   let rec loop = () =>
-    Protocol.Zest.recv(ctx.zmq_ctx)
-    >>= (
-      (msg) =>
-        handle_msg(msg, ctx)
-        >>= (
-          (resp) =>
-            Protocol.Zest.send(ctx.zmq_ctx, resp)
-            >>= (
-              () =>
-                Logger.debug_f("server", Printf.sprintf("Sending:\n%s", resp))
-                >>= (() => loop())
-            )
-        )
-    );
+    Protocol.Zest.recv(ctx.zmq_ctx) >>= ((msg) =>
+      handle_msg(msg, ctx) >>= ((resp) =>
+        Protocol.Zest.send(ctx.zmq_ctx, resp) >>= (() =>
+          Logger.debug_f("server", Printf.sprintf("Sending:\n%s", resp)) >>= (() => 
+            loop()))));
   Logger.info_f("server", "active") >>= (() => loop());
 };
 
