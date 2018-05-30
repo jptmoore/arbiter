@@ -90,11 +90,13 @@ let handle_get = (ctx, prov) => {
   ack(Ack.Payload(69,"w00t!"));
 };
 
+
 let handle_post = (ctx, prov, payload) => {
   let uri_path = Prov.uri_path(prov);
   let path_list = String.split_on_char('/', uri_path);
+  let macaroon = Mint.mint_token(~path="", ~meth="", ~target="", ~key="", ());
   switch path_list {
-  | ["", "token"] => ack(Ack.Payload(69,payload));
+  | ["", "token"] => ack(Ack.Payload(69,macaroon));
   | _ => ack(Ack.Code(128)); 
   };
   
