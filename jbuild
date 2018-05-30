@@ -1,5 +1,5 @@
 (jbuild_version 1)
   
 (executables
-  ((libraries (protocol bos str macaroons macaroons.sodium))
+  ((libraries (protocol bos str macaroons macaroons.sodium ezjsonm))
     (names (server))))

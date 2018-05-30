@@ -87,20 +87,50 @@ let handle_options = (oc, bits) => {
 };
 
 let handle_get = (ctx, prov) => {
-  ack(Ack.Payload(69,"w00t!"));
+  ack(Ack.Payload(0,"w00t!"));
 };
 
+
+let to_json = (payload) => {
+  open Ezjsonm;
+  let parsed =
+    try (Some(from_string(payload))) {
+    | Parse_error(_) => None
+    };
+  parsed;
+};
+
+
+let is_valid = (json) => {
+  open Ezjsonm;
+  mem(json, ["path"]) && mem(json, ["method"]) && mem(json, ["target"]);
+};
+
+let mint_token = (ctx, prov, json) => {
+  open Ezjsonm;
+  open Printf;
+  let path = sprintf("path = %s", get_string(find(json, ["path"])));
+  let meth = sprintf("method = %s", get_string(find(json, ["method"])));
+  let target = sprintf("target = %s", get_string(find(json, ["target"])));
+  Mint.mint_token(~path=path, ~meth=meth, ~target=target, ~key="", ());
+};
+
+let handle_post_token = (ctx, prov, payload) => {
+  switch (to_json(payload)) {
+    | Some(json) => is_valid(json) ? ack(Ack.Payload(0,mint_token(ctx, prov, json))) : ack(Ack.Code(128)); 
+    | None => ack(Ack.Code(128)); 
+    };
+};
 
 let handle_post = (ctx, prov, payload) => {
   let uri_path = Prov.uri_path(prov);
   let path_list = String.split_on_char('/', uri_path);
-  let macaroon = Mint.mint_token(~path="", ~meth="", ~target="", ~key="", ());
   switch path_list {
-  | ["", "token"] => ack(Ack.Payload(69,macaroon));
-  | _ => ack(Ack.Code(128)); 
-  };
-  
+    | ["", "token"] => handle_post_token(ctx, prov, payload);
+    | _ => ack(Ack.Code(128)); 
+    };
 };
+
 
 let handle_msg = (msg, ctx) =>
   Logger.debug_f("handle_msg", Printf.sprintf("Received:\n%s", msg))
