@@ -103,7 +103,7 @@ let to_json = (payload) => {
 
 let is_valid = (json) => {
   open Ezjsonm;
-  mem(json, ["path"]) && mem(json, ["method"]) && mem(json, ["target"]);
+  mem(json, ["path"]) && mem(json, ["method"]) && mem(json, ["target"]) && mem(json, ["key"]); 
 };
 
 let mint_token = (ctx, prov, json) => {
@@ -112,7 +112,8 @@ let mint_token = (ctx, prov, json) => {
   let path = sprintf("path = %s", get_string(find(json, ["path"])));
   let meth = sprintf("method = %s", get_string(find(json, ["method"])));
   let target = sprintf("target = %s", get_string(find(json, ["target"])));
-  Mint.mint_token(~path=path, ~meth=meth, ~target=target, ~key="", ());
+  let key = get_string(find(json, ["key"]));
+  Mint.mint_token(~path=path, ~meth=meth, ~target=target, ~key=key, ());
 };
 
 let handle_post_token = (ctx, prov, payload) => {
