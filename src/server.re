@@ -8,6 +8,8 @@ let server_secret_key_file = ref("");
 let server_secret_key = ref("");
 let router_secret_key = ref("");
 let router_public_key = ref("");
+let token_secret_key = ref("");
+let token_secret_key_file = ref("");
 
 type t = {
   zmq_ctx: Protocol.Zest.t,
@@ -26,6 +28,7 @@ let parse_cmdline = () => {
     ("--request-endpoint", Arg.Set_string(rep_endpoint), ": to set the request/reply endpoint"),
     ("--enable-logging", Arg.Set(log_mode), ": turn debug mode on"),
     ("--secret-key-file", Arg.Set_string(server_secret_key_file), ": to set the curve secret key"),
+    ("--token-key-file", Arg.Set_string(token_secret_key_file), ": to set the token secret key")
     ];
     Arg.parse(speclist, (x) => raise(Arg.Bad("Bad argument : " ++ x)), usage);
 };
@@ -47,6 +50,9 @@ let data_from_file = (file) =>
   );
 
 let set_server_key = (file) => server_secret_key := data_from_file(file);
+
+let set_token_key = (file) => 
+  if (file != "") {token_secret_key := data_from_file(file)};
 
 let setup_router_keys = () => {
   let (public_key, private_key) = ZMQ.Curve.keypair();
@@ -133,23 +139,33 @@ let handle_post = (ctx, prov, payload) => {
 };
 
 
-let handle_msg = (msg, ctx) =>
-  Logger.debug_f("handle_msg", Printf.sprintf("Received:\n%s", msg))
-  >>= (
-    () => {
-      let r0 = Bitstring.bitstring_of_string(msg);
-      let (tkl, oc, code, r1) = Protocol.Zest.handle_header(r0);
-      let (token, r2) = Protocol.Zest.handle_token(r1, tkl);
+
+let is_valid_token = (token) =>
+  switch token_secret_key^ {
+  | "" => true
+  | _ => token == token_secret_key^
+  };
+
+
+let handle_msg = (msg, ctx) => {
+  Logger.debug_f("handle_msg", Printf.sprintf("Received:\n%s", msg)) >>= (() => {
+    let r0 = Bitstring.bitstring_of_string(msg);
+    let (tkl, oc, code, r1) = Protocol.Zest.handle_header(r0);
+    let (token, r2) = Protocol.Zest.handle_token(r1, tkl);
+    if (is_valid_token(token)) {
       let (options, r3) = handle_options(oc, r2);
       let payload = Bitstring.string_of_bitstring(r3);
       let prov = Prov.create(~code=code, ~options=options, ~token=token);
       switch code {
       | 1 => handle_get(ctx, prov);
       | 2 => handle_post(ctx, prov, payload);
-      | _ => failwith("invalid code")
+      | _ => ack(Ack.Code(128));
       };
-    }
-  );
+    } else {
+      ack(Ack.Code(129)); 
+    };
+  });
+};
 
 let server = (ctx) => {
   open Logger;
@@ -180,6 +196,7 @@ let setup_server = () => {
   log_mode^ ? Logger.init () : ();
   setup_router_keys();
   set_server_key(server_secret_key_file^);
+  set_token_key(token_secret_key_file^);
   let zmq_ctx =
     Protocol.Zest.create(
       ~endpoints=(rep_endpoint^, router_endpoint^),
