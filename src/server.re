@@ -92,8 +92,17 @@ let handle_options = (oc, bits) => {
   (options, handle(oc, bits));
 };
 
+let handle_get_status = (ctx, prov) => {
+  ack(Ack.Code(65));
+};
+
 let handle_get = (ctx, prov) => {
-  ack(Ack.Payload(0,"w00t!"));
+  let uri_path = Prov.uri_path(prov);
+  let path_list = String.split_on_char('/', uri_path);
+  switch path_list {
+    | ["", "status"] => handle_get_status(ctx, prov);
+    | _ => ack(Ack.Code(128)); 
+    };
 };
 
 
