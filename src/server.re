@@ -13,6 +13,7 @@ let token_secret_key_file = ref("");
 
 type t = {
   zmq_ctx: Protocol.Zest.t,
+  state_ctx: State.t,
   version: int
 };
 
@@ -35,6 +36,7 @@ let parse_cmdline = () => {
 
 let init = (zmq_ctx)  => {
   zmq_ctx: zmq_ctx,
+  state_ctx: State.create(),
   version: 1
 };
 
@@ -116,7 +118,7 @@ let to_json = (payload) => {
 };
 
 
-let is_valid = (json) => {
+let is_valid_token_data = (json) => {
   open Ezjsonm;
   mem(json, ["path"]) && mem(json, ["method"]) && mem(json, ["target"]) && mem(json, ["key"]); 
 };
@@ -133,7 +135,26 @@ let mint_token = (ctx, prov, json) => {
 
 let handle_post_token = (ctx, prov, payload) => {
   switch (to_json(payload)) {
-    | Some(json) => is_valid(json) ? ack(Ack.Payload(0,mint_token(ctx, prov, json))) : ack(Ack.Code(128)); 
+    | Some(json) => is_valid_token_data(json) ? ack(Ack.Payload(0,mint_token(ctx, prov, json))) : ack(Ack.Code(128)); 
+    | None => ack(Ack.Code(128)); 
+    };
+};
+
+let is_valid_upsert_container_info_data = (json) => {
+  open Ezjsonm;
+  mem(json, ["name"]) && mem(json, ["type"]) && mem(json, ["key"]); 
+};
+
+let upsert_container_info = (ctx, prov, json) => {
+  open Ezjsonm;
+  let name = get_string(find(json, ["name"]));
+  State.add(ctx.state_ctx, name, wrap(json));
+  name;
+};
+
+let handle_post_upsert_container_info = (ctx, prov, payload) => {
+  switch (to_json(payload)) {
+    | Some(json) => is_valid_upsert_container_info_data(json) ? ack(Ack.Payload(0,upsert_container_info(ctx, prov, json))) : ack(Ack.Code(128)); 
     | None => ack(Ack.Code(128)); 
     };
 };
@@ -143,6 +164,7 @@ let handle_post = (ctx, prov, payload) => {
   let path_list = String.split_on_char('/', uri_path);
   switch path_list {
     | ["", "token"] => handle_post_token(ctx, prov, payload);
+    | ["", "cm", "upsert-container-info"] => handle_post_upsert_container_info(ctx, prov, payload);
     | _ => ack(Ack.Code(128)); 
     };
 };
