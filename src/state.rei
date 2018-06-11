@@ -4,6 +4,8 @@ let create: unit => t;
 
 let add: (t, string, Ezjsonm.t) => unit;
 
+let remove: (t, string) => unit;
+
 let replace: (t, string, Ezjsonm.t) => unit;
 
 let get: (t, string) => Ezjsonm.t;

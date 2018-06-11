@@ -149,12 +149,32 @@ let upsert_container_info = (ctx, prov, json) => {
   open Ezjsonm;
   let name = get_string(find(json, ["name"]));
   State.add(ctx.state_ctx, name, wrap(json));
-  name;
+  ack(Ack.Payload(0,name));
 };
 
 let handle_post_upsert_container_info = (ctx, prov, payload) => {
   switch (to_json(payload)) {
-    | Some(json) => is_valid_upsert_container_info_data(json) ? ack(Ack.Payload(0,upsert_container_info(ctx, prov, json))) : ack(Ack.Code(128)); 
+    | Some(json) => is_valid_upsert_container_info_data(json) ? upsert_container_info(ctx, prov, json) : ack(Ack.Code(128)); 
+    | None => ack(Ack.Code(128)); 
+    };
+};
+
+let is_valid_delete_container_info_data = (json) => {
+  open Ezjsonm;
+  mem(json, ["name"]); 
+};
+
+let delete_container_info = (ctx, prov, json) => {
+  open Ezjsonm;
+  let name = get_string(find(json, ["name"]));
+  State.remove(ctx.state_ctx, name);
+  ack(Ack.Code(66));
+};
+
+
+let handle_post_delete_container_info = (ctx, prov, payload) => {
+  switch (to_json(payload)) {
+    | Some(json) => is_valid_delete_container_info_data(json) ? delete_container_info(ctx,prov,json) : ack(Ack.Code(128)); 
     | None => ack(Ack.Code(128)); 
     };
 };
@@ -165,6 +185,7 @@ let handle_post = (ctx, prov, payload) => {
   switch path_list {
     | ["", "token"] => handle_post_token(ctx, prov, payload);
     | ["", "cm", "upsert-container-info"] => handle_post_upsert_container_info(ctx, prov, payload);
+    | ["", "cm", "delete-container-info"] => handle_post_delete_container_info(ctx, prov, payload);
     | _ => ack(Ack.Code(128)); 
     };
 };

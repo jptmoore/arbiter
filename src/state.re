@@ -10,6 +10,8 @@ let exists = (ctx, id) => Hashtbl.mem(ctx.ht, id);
 
 let add = (ctx, id, q) => Hashtbl.replace(ctx.ht, id, q);
 
+let remove = (ctx, id) => Hashtbl.remove(ctx.ht, id);
+
 let replace = (ctx, id, q) => Hashtbl.replace(ctx.ht, id, q);
 
 let get = (ctx, id) => Hashtbl.find(ctx.ht, id);
