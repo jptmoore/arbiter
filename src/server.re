@@ -181,7 +181,7 @@ let handle_post_delete_container_info = (ctx, prov, payload) => {
     };
 };
 
-let is_valid_grant_container_permissions_data = (ctx, json) => {
+let is_valid_container_permissions_data = (ctx, json) => {
   open Ezjsonm;
   mem(json, ["name"]) && 
   mem(json, ["route", "target"]) && 
@@ -189,6 +189,7 @@ let is_valid_grant_container_permissions_data = (ctx, json) => {
   mem(json, ["route", "method"]) && 
   mem(json, ["caveats"]);
 };
+
 
 
 let grant_container_permissions = (ctx, prov, json) => {
@@ -207,13 +208,37 @@ let grant_container_permissions = (ctx, prov, json) => {
   };
 };
 
+let revoke_container_permissions = (ctx, prov, json) => {
+  open Ezjsonm;
+  let name = get_string(find(json, ["name"]));
+  if (State.exists(ctx.state_ctx, name)) {
+    let record = State.get(ctx.state_ctx, name);
+    let json' = update(value(record), ["permissions"], Some(dict([])));
+    let obj = `O(get_dict(json'));
+    State.replace(ctx.state_ctx, name, obj);
+    let caveats = find(json, ["caveats"]);
+    let arr = `A(get_list((x) => x,caveats));
+    ack(Ack.Payload(50,to_string(arr)));
+  } else {
+    ack(Ack.Code(129))
+  };
+};
+
+
 let handle_post_grant_container_permissions = (ctx, prov, payload) => {
   switch (to_json(payload)) {
-    | Some(json) => is_valid_grant_container_permissions_data(ctx,json) ? grant_container_permissions(ctx,prov,json) : ack(Ack.Code(128)); 
+    | Some(json) => is_valid_container_permissions_data(ctx,json) ? grant_container_permissions(ctx,prov,json) : ack(Ack.Code(128)); 
     | None => ack(Ack.Code(128)); 
     };
 };
 
+
+let handle_post_revoke_container_permissions = (ctx, prov, payload) => {
+  switch (to_json(payload)) {
+    | Some(json) => is_valid_container_permissions_data(ctx,json) ? revoke_container_permissions(ctx,prov,json) : ack(Ack.Code(128)); 
+    | None => ack(Ack.Code(128)); 
+    };
+};
 
 let handle_post = (ctx, prov, payload) => {
   let uri_path = Prov.uri_path(prov);
@@ -223,6 +248,7 @@ let handle_post = (ctx, prov, payload) => {
     | ["", "cm", "upsert-container-info"] => handle_post_upsert_container_info(ctx, prov, payload);
     | ["", "cm", "delete-container-info"] => handle_post_delete_container_info(ctx, prov, payload);
     | ["", "cm", "grant-container-permissions"] => handle_post_grant_container_permissions(ctx, prov, payload);
+    | ["", "cm", "revoke-container-permissions"] => handle_post_revoke_container_permissions(ctx, prov, payload);
     | _ => ack(Ack.Code(128)); 
     };
 };
