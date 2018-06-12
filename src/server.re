@@ -120,22 +120,50 @@ let to_json = (payload) => {
 
 let is_valid_token_data = (json) => {
   open Ezjsonm;
-  mem(json, ["path"]) && mem(json, ["method"]) && mem(json, ["target"]) && mem(json, ["key"]); 
+  mem(json, ["path"]) && mem(json, ["method"]) && mem(json, ["target"]); 
 };
 
-let mint_token = (ctx, prov, json) => {
-  open Ezjsonm;
+
+
+let mint_token = (path, meth, target, key) => {
   open Printf;
-  let path = sprintf("path = %s", get_string(find(json, ["path"])));
-  let meth = sprintf("method = %s", get_string(find(json, ["method"])));
-  let target = sprintf("target = %s", get_string(find(json, ["target"])));
-  let key = get_string(find(json, ["key"]));
+  let path = sprintf("path = %s", path);
+  let meth = sprintf("method = %s", meth);
+  let target = sprintf("target = %s", target);
   Mint.mint_token(~path=path, ~meth=meth, ~target=target, ~key=key, ());
+};
+
+
+let handle_token = (ctx, prov, json) => {
+  open Ezjsonm;
+  let path = get_string(find(json, ["path"]));
+  let meth = get_string(find(json, ["method"]));
+  let target = get_string(find(json, ["target"]));
+  if (State.exists(ctx.state_ctx, target)) {
+    let record = State.get(ctx.state_ctx, target);
+    let permissions = find(value(record), ["permissions"]);
+    if (permissions != dict([])) {
+      let path' = get_string(find(value(record), ["permissions", "route", "path"]));
+      let meth' = get_string(find(value(record), ["permissions", "route", "method"]));
+      let target' = get_string(find(value(record), ["permissions", "route", "target"]));
+      if (path == path' && meth == meth' && target == target') {
+        let key = get_string(find(value(record), ["key"]));
+        let token = mint_token(path, meth, target, key);
+        ack(Ack.Payload(0,token));
+      } else {
+        ack(Ack.Code(129));
+      }
+    } else {
+      ack(Ack.Code(129));
+    };
+  } else {
+    ack(Ack.Code(129));
+  };
 };
 
 let handle_post_token = (ctx, prov, payload) => {
   switch (to_json(payload)) {
-    | Some(json) => is_valid_token_data(json) ? ack(Ack.Payload(0,mint_token(ctx, prov, json))) : ack(Ack.Code(128)); 
+    | Some(json) => is_valid_token_data(json) ? handle_token(ctx,prov,json) : ack(Ack.Code(128)); 
     | None => ack(Ack.Code(128)); 
     };
 };
