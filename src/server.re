@@ -177,8 +177,10 @@ let upsert_container_info = (ctx, prov, json) => {
   open Ezjsonm;
   let name = get_string(find(json, ["name"]));
   let json' = update(json, ["permissions"], Some(dict([])));
-  let obj = `O(get_dict(json'));
+  let json'' = update(json', ["secret"], Some(string("")));
+  let obj = `O(get_dict(json''));
   State.add(ctx.state_ctx, name, obj);
+  let _ = Logger.info_f("upsert_container_info", to_string(obj));
   ack(Ack.Payload(0,name));
 };
 
