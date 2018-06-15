@@ -254,7 +254,7 @@ let add_permissions = (record, item) => {
   let json = find(value(record), ["permissions"]);
   let lis = get_list((x) => x, json);
   let lis' = List.append(lis, [item]);
-  list((x) =>x, lis');
+  list((x) => x, lis');
 };
 
 let grant_container_permissions = (ctx, prov, json) => {
@@ -266,11 +266,20 @@ let grant_container_permissions = (ctx, prov, json) => {
     let obj = `O(get_dict(record'));
     State.replace(ctx.state_ctx, name, obj);
     let _ = Logger.info_f("grant_container_permissions", to_string(obj));
-    let arr = `A(get_list((x) => x,get_route(obj)));
+    let arr = `A(get_list((x) => x, get_route(obj)));
     ack(Ack.Payload(50,to_string(arr)));
   } else {
     ack(Ack.Code(129))
   };
+};
+
+let remove_permissions = (record, item) => {
+  open Ezjsonm;
+  let json = find(value(record), ["permissions"]);
+  let lis = get_list((x) => x, json);
+  let route = find(item, ["route"]);
+  let lis' = List.filter((x) => (find(x, ["route"]) != route), lis);
+  list((x) => x, lis');
 };
 
 let revoke_container_permissions = (ctx, prov, json) => {
@@ -278,12 +287,12 @@ let revoke_container_permissions = (ctx, prov, json) => {
   let name = get_string(find(json, ["name"]));
   if (State.exists(ctx.state_ctx, name)) {
     let record = State.get(ctx.state_ctx, name);
-    let record' = update(value(record), ["permissions"], Some(`A([])));
+    let record' = update(value(record), ["permissions"], Some(remove_permissions(record, json)));
     let record'' = update(record', ["secret"], Some(string("")));
     let obj = `O(get_dict(record''));
     State.replace(ctx.state_ctx, name, obj);
     let _ = Logger.info_f("revoke_container_permissions", to_string(obj));
-    let arr = `A(get_list((x) => x,get_route(obj)));
+    let arr = `A(get_list((x) => x, get_route(obj)));
     ack(Ack.Payload(50,to_string(arr)));
   } else {
     ack(Ack.Code(129))
