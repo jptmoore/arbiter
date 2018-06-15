@@ -249,12 +249,20 @@ let get_route = (record) => {
 };
 
 
+let add_permissions = (record, item) => {
+  open Ezjsonm;
+  let json = find(value(record), ["permissions"]);
+  let lis = get_list((x) => x, json);
+  let lis' = List.append(lis, [item]);
+  list((x) =>x, lis');
+};
+
 let grant_container_permissions = (ctx, prov, json) => {
   open Ezjsonm;
   let name = get_string(find(json, ["name"]));
   if (State.exists(ctx.state_ctx, name)) {
     let record = State.get(ctx.state_ctx, name);
-    let record' = update(value(record), ["permissions"], Some(`A([json])));
+    let record' = update(value(record), ["permissions"], Some(add_permissions(record, json)));
     let obj = `O(get_dict(record'));
     State.replace(ctx.state_ctx, name, obj);
     let _ = Logger.info_f("grant_container_permissions", to_string(obj));
