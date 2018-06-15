@@ -142,13 +142,13 @@ let handle_token = (ctx, prov, json) => {
   if (State.exists(ctx.state_ctx, target)) {
     let record = State.get(ctx.state_ctx, target);
     let permissions = find(value(record), ["permissions"]);
-    if (permissions != dict([])) {
+    let secret = get_string(find(value(record), ["secret"]));
+    if (permissions != dict([]) && secret != "") {
       let path' = get_string(find(value(record), ["permissions", "route", "path"]));
       let meth' = get_string(find(value(record), ["permissions", "route", "method"]));
       let target' = get_string(find(value(record), ["permissions", "route", "target"]));
       if (path == path' && meth == meth' && target == target') {
-        let key = get_string(find(value(record), ["key"]));
-        let token = mint_token(path, meth, target, key);
+        let token = mint_token(path, meth, target, secret);
         ack(Ack.Payload(0,token));
       } else {
         ack(Ack.Code(129));
@@ -230,6 +230,7 @@ let grant_container_permissions = (ctx, prov, json) => {
     let json' = update(value(record), ["permissions"], Some(json));
     let obj = `O(get_dict(json'));
     State.replace(ctx.state_ctx, name, obj);
+    let _ = Logger.info_f("grant_container_permissions", to_string(obj));
     let caveats = find(json, ["caveats"]);
     let arr = `A(get_list((x) => x,caveats));
     ack(Ack.Payload(50,to_string(arr)));
@@ -244,8 +245,10 @@ let revoke_container_permissions = (ctx, prov, json) => {
   if (State.exists(ctx.state_ctx, name)) {
     let record = State.get(ctx.state_ctx, name);
     let json' = update(value(record), ["permissions"], Some(dict([])));
-    let obj = `O(get_dict(json'));
+    let json'' = update(json', ["secret"], Some(string("")));
+    let obj = `O(get_dict(json''));
     State.replace(ctx.state_ctx, name, obj);
+    let _ = Logger.info_f("revoke_container_permissions", to_string(obj));
     let caveats = find(json, ["caveats"]);
     let arr = `A(get_list((x) => x,caveats));
     ack(Ack.Payload(50,to_string(arr)));
