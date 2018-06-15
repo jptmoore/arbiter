@@ -197,7 +197,7 @@ let is_valid_upsert_container_info_data = (json) => {
 let upsert_container_info = (ctx, prov, json) => {
   open Ezjsonm;
   let name = get_string(find(json, ["name"]));
-  let json' = update(json, ["permissions"], Some(dict([])));
+  let json' = update(json, ["permissions"], Some(`A([])));
   let json'' = update(json', ["secret"], Some(string("")));
   let obj = `O(get_dict(json''));
   State.add(ctx.state_ctx, name, obj);
@@ -242,18 +242,23 @@ let is_valid_container_permissions_data = (ctx, json) => {
 };
 
 
+let get_route = (record) => {
+  open Ezjsonm;
+  let arr = find(value(record), ["permissions"]);
+  `A(get_list((x) => find(x,["route"]), arr));
+};
+
 
 let grant_container_permissions = (ctx, prov, json) => {
   open Ezjsonm;
   let name = get_string(find(json, ["name"]));
   if (State.exists(ctx.state_ctx, name)) {
     let record = State.get(ctx.state_ctx, name);
-    let json' = update(value(record), ["permissions"], Some(json));
-    let obj = `O(get_dict(json'));
+    let record' = update(value(record), ["permissions"], Some(`A([json])));
+    let obj = `O(get_dict(record'));
     State.replace(ctx.state_ctx, name, obj);
     let _ = Logger.info_f("grant_container_permissions", to_string(obj));
-    let caveats = find(json, ["caveats"]);
-    let arr = `A(get_list((x) => x,caveats));
+    let arr = `A(get_list((x) => x,get_route(obj)));
     ack(Ack.Payload(50,to_string(arr)));
   } else {
     ack(Ack.Code(129))
@@ -265,13 +270,12 @@ let revoke_container_permissions = (ctx, prov, json) => {
   let name = get_string(find(json, ["name"]));
   if (State.exists(ctx.state_ctx, name)) {
     let record = State.get(ctx.state_ctx, name);
-    let json' = update(value(record), ["permissions"], Some(dict([])));
-    let json'' = update(json', ["secret"], Some(string("")));
-    let obj = `O(get_dict(json''));
+    let record' = update(value(record), ["permissions"], Some(`A([])));
+    let record'' = update(record', ["secret"], Some(string("")));
+    let obj = `O(get_dict(record''));
     State.replace(ctx.state_ctx, name, obj);
     let _ = Logger.info_f("revoke_container_permissions", to_string(obj));
-    let caveats = find(json, ["caveats"]);
-    let arr = `A(get_list((x) => x,caveats));
+    let arr = `A(get_list((x) => x,get_route(obj)));
     ack(Ack.Payload(50,to_string(arr)));
   } else {
     ack(Ack.Code(129))
