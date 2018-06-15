@@ -308,12 +308,26 @@ let handle_post = (ctx, prov, payload) => {
 };
 
 
+let is_valid_uri_host = (ctx, uri_host, token) => {
+  open Ezjsonm;
+  if (State.exists(ctx.state_ctx, uri_host)) {
+    let record = State.get(ctx.state_ctx, uri_host);
+    let key = get_string(find(value(record), ["key"]));
+    key == token;
+  } else {
+    false;
+  }
+};
 
-let is_valid_token = (token) =>
+
+let is_valid_token = (ctx, prov) => {
+  let token = Prov.token(prov);
+  let uri_host = Prov.uri_host(prov);
   switch token_secret_key^ {
   | "" => true
-  | _ => token == token_secret_key^
+  | _ => (token == token_secret_key^) || (is_valid_uri_host(ctx,uri_host,token));
   };
+};
 
 
 let handle_msg = (msg, ctx) => {
@@ -321,10 +335,10 @@ let handle_msg = (msg, ctx) => {
     let r0 = Bitstring.bitstring_of_string(msg);
     let (tkl, oc, code, r1) = Protocol.Zest.handle_header(r0);
     let (token, r2) = Protocol.Zest.handle_token(r1, tkl);
-    if (is_valid_token(token)) {
-      let (options, r3) = handle_options(oc, r2);
+    let (options, r3) = handle_options(oc, r2);
+    let prov = Prov.create(~code=code, ~options=options, ~token=token);
+    if (is_valid_token(ctx, prov)) {
       let payload = Bitstring.string_of_bitstring(r3);
-      let prov = Prov.create(~code=code, ~options=options, ~token=token);
       switch code {
       | 1 => handle_get(ctx, prov);
       | 2 => handle_post(ctx, prov, payload);
