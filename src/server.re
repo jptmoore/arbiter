@@ -104,7 +104,6 @@ let create_uuid = () => Uuidm.v4_gen(Random.State.make_self_init(), ()) |> Uuidm
 let handle_get_store_secret = (ctx, prov) => {
   open Ezjsonm;
   let uri_host = Prov.uri_host(prov);
-  let _ = Logger.info_f("uri_host", uri_host);
   if (State.exists(ctx.state_ctx, uri_host)) {
     let record = State.get(ctx.state_ctx, uri_host);
     let secret = create_uuid();
@@ -157,14 +156,15 @@ let mint_token = (path, meth, target, key) => {
 
 let handle_token = (ctx, prov, json) => {
   open Ezjsonm;
-  let path = get_string(find(json, ["path"]));
-  let meth = get_string(find(json, ["method"]));
-  let target = get_string(find(json, ["target"]));
-  if (State.exists(ctx.state_ctx, target)) {
-    let record = State.get(ctx.state_ctx, target);
+  let uri_host = Prov.uri_host(prov);
+  if (State.exists(ctx.state_ctx, uri_host)) {
+    let record = State.get(ctx.state_ctx, uri_host);
     let permissions = find(value(record), ["permissions"]);
     let secret = get_string(find(value(record), ["secret"]));
     if (permissions != dict([]) && secret != "") {
+      let path = get_string(find(json, ["path"]));
+      let meth = get_string(find(json, ["method"]));
+      let target = get_string(find(json, ["target"]));
       let path' = get_string(find(value(record), ["permissions", "route", "path"]));
       let meth' = get_string(find(value(record), ["permissions", "route", "method"]));
       let target' = get_string(find(value(record), ["permissions", "route", "target"]));
