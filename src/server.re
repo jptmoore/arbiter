@@ -98,11 +98,32 @@ let handle_get_status = (ctx, prov) => {
   ack(Ack.Code(65));
 };
 
+let create_uuid = () => Uuidm.v4_gen(Random.State.make_self_init(), ()) |> Uuidm.to_string;
+
+
+let handle_get_store_secret = (ctx, prov) => {
+  open Ezjsonm;
+  let uri_host = Prov.uri_host(prov);
+  let _ = Logger.info_f("uri_host", uri_host);
+  if (State.exists(ctx.state_ctx, uri_host)) {
+    let record = State.get(ctx.state_ctx, uri_host);
+    let secret = create_uuid();
+    let json = update(value(record), ["secret"], Some(string(secret)));
+    let obj = `O(get_dict(json));
+    State.replace(ctx.state_ctx, uri_host, obj);
+    ack(Ack.Payload(0, secret));
+  } else {
+    ack(Ack.Code(129)); 
+  }
+};
+
+
 let handle_get = (ctx, prov) => {
   let uri_path = Prov.uri_path(prov);
   let path_list = String.split_on_char('/', uri_path);
   switch path_list {
     | ["", "status"] => handle_get_status(ctx, prov);
+    | ["", "store", "secret"] => handle_get_store_secret(ctx, prov);
     | _ => ack(Ack.Code(128)); 
     };
 };
