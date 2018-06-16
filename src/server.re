@@ -14,6 +14,7 @@ let token_secret_key_file = ref("");
 type t = {
   zmq_ctx: Protocol.Zest.t,
   state_ctx: State.t,
+  hypercat_ctx: Hypercat.t,
   version: int
 };
 
@@ -37,6 +38,7 @@ let parse_cmdline = () => {
 let init = (zmq_ctx)  => {
   zmq_ctx: zmq_ctx,
   state_ctx: State.create(),
+  hypercat_ctx: Hypercat.create(),
   version: 1
 };
 
@@ -116,6 +118,11 @@ let handle_get_store_secret = (ctx, prov) => {
   }
 };
 
+let handle_get_cat = (ctx, prov) => {
+  let json = Hypercat.get(ctx.hypercat_ctx);
+  ack(Ack.Payload(50, Ezjsonm.to_string(json)));
+};
+
 
 let handle_get = (ctx, prov) => {
   let uri_path = Prov.uri_path(prov);
@@ -123,6 +130,7 @@ let handle_get = (ctx, prov) => {
   switch path_list {
     | ["", "status"] => handle_get_status(ctx, prov);
     | ["", "store", "secret"] => handle_get_store_secret(ctx, prov);
+    | ["", "cat"] => handle_get_cat(ctx, prov);
     | _ => ack(Ack.Code(128)); 
     };
 };
