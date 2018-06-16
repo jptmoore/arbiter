@@ -32,12 +32,23 @@ let make_item = (name) => {
             ("val", string("application/vnd.hypercat.catalogue+json"))])]))])
 };
 
+let remove_item_worker = (json, href) => {
+  let href' = get_string(find(json, ["href"])); 
+  href != href';
+};
+
+let remove_item = (name, lis) => {
+  let href = make_href(name, tcp_port);
+  List.filter((x) => remove_item_worker(x, href), lis);
+};
+
 let update = (ctx, name) => {
   let items = find(value(ctx.cat), ["items"]);
   let item = make_item(name);
   let lis = get_list((x) => x, items);
-  let lis' = List.append(lis, [item]);
-  let items' = list((x) => x, lis');
+  let lis' = remove_item(name, lis);
+  let lis'' = List.append(lis', [item]);
+  let items' = list((x) => x, lis'');
   let cat = update((value(ctx.cat)), ["items"], Some(items'));
   ctx.cat = `O(get_dict(cat));
 };
