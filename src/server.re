@@ -153,6 +153,20 @@ let mint_token = (path, meth, target, key) => {
   Mint.mint_token(~path=path, ~meth=meth, ~target=target, ~key=key, ());
 };
 
+let get_route = (record) => {
+  open Ezjsonm;
+  let arr = find(value(record), ["permissions"]);
+  `A(get_list((x) => find(x,["route"]), arr));
+};
+
+
+let route_exists = (record, route) => {
+  open Ezjsonm;
+  let arr = get_route(record);
+  let lis = get_list((x) => x, arr);
+  List.exists((x) => x == route) (lis);
+};
+
 
 let handle_token = (ctx, prov, json) => {
   open Ezjsonm;
@@ -162,13 +176,10 @@ let handle_token = (ctx, prov, json) => {
     let permissions = find(value(record), ["permissions"]);
     let secret = get_string(find(value(record), ["secret"]));
     if (permissions != dict([]) && secret != "") {
-      let path = get_string(find(json, ["path"]));
-      let meth = get_string(find(json, ["method"]));
-      let target = get_string(find(json, ["target"]));
-      let path' = get_string(find(value(record), ["permissions", "route", "path"]));
-      let meth' = get_string(find(value(record), ["permissions", "route", "method"]));
-      let target' = get_string(find(value(record), ["permissions", "route", "target"]));
-      if (path == path' && meth == meth' && target == target') {
+      if (route_exists(record, json)) {
+        let path = get_string(find(json, ["path"]));
+        let meth = get_string(find(json, ["method"]));
+        let target = get_string(find(json, ["target"]));
         let token = mint_token(path, meth, target, secret);
         ack(Ack.Payload(0,token));
       } else {
@@ -242,11 +253,7 @@ let is_valid_container_permissions_data = (ctx, json) => {
 };
 
 
-let get_route = (record) => {
-  open Ezjsonm;
-  let arr = find(value(record), ["permissions"]);
-  `A(get_list((x) => find(x,["route"]), arr));
-};
+
 
 
 let add_permissions = (record, item) => {
