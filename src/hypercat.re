@@ -42,13 +42,30 @@ let remove_item = (name, lis) => {
   List.filter((x) => remove_item_worker(x, href), lis);
 };
 
-let update = (ctx, name) => {
+
+let filter_lis = (ctx, name) => {
   let items = find(value(ctx.cat), ["items"]);
-  let item = make_item(name);
   let lis = get_list((x) => x, items);
-  let lis' = remove_item(name, lis);
-  let lis'' = List.append(lis', [item]);
-  let items' = list((x) => x, lis'');
-  let cat = update((value(ctx.cat)), ["items"], Some(items'));
+  remove_item(name, lis);
+};
+
+let update_cat = (ctx, items) => {
+  let cat = update((value(ctx.cat)), ["items"], Some(items));
   ctx.cat = `O(get_dict(cat));
 };
+
+let remove = (ctx, name) => {
+  let lis = filter_lis(ctx, name);
+  let items = list((x) => x, lis);
+  update_cat(ctx, items);
+};
+
+let add = (ctx, name) => {
+  let item = make_item(name);
+  let lis = filter_lis(ctx, name);
+  let lis' = List.append(lis, [item]);
+  let items = list((x) => x, lis');
+  update_cat(ctx, items);
+};
+
+

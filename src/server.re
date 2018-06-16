@@ -216,7 +216,7 @@ let is_valid_upsert_container_info_data = (json) => {
 let upsert_container_info = (ctx, prov, json) => {
   open Ezjsonm;
   let name = get_string(find(json, ["name"]));
-  Hypercat.update(ctx.hypercat_ctx, name);
+  Hypercat.add(ctx.hypercat_ctx, name);
   let json' = update(json, ["permissions"], Some(`A([])));
   let json'' = update(json', ["secret"], Some(string("")));
   let obj = `O(get_dict(json''));
@@ -240,6 +240,7 @@ let is_valid_delete_container_info_data = (json) => {
 let delete_container_info = (ctx, prov, json) => {
   open Ezjsonm;
   let name = get_string(find(json, ["name"]));
+  Hypercat.remove(ctx.hypercat_ctx, name);
   State.remove(ctx.state_ctx, name);
   ack(Ack.Code(66));
 };
