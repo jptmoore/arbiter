@@ -216,6 +216,7 @@ let is_valid_upsert_container_info_data = (json) => {
 let upsert_container_info = (ctx, prov, json) => {
   open Ezjsonm;
   let name = get_string(find(json, ["name"]));
+  Hypercat.update(ctx.hypercat_ctx, name);
   let json' = update(json, ["permissions"], Some(`A([])));
   let json'' = update(json', ["secret"], Some(string("")));
   let obj = `O(get_dict(json''));
