@@ -176,18 +176,28 @@ let route_exists = (record, route) => {
 };
 
 
+let get_secret = (ctx, target) => {
+  open Ezjsonm;
+  if (State.exists(ctx.state_ctx, target)) {
+    let record = State.get(ctx.state_ctx, target);
+    get_string(find(value(record), ["secret"]));
+  } else {
+    "";
+  }
+};
+
 let handle_token = (ctx, prov, json) => {
   open Ezjsonm;
   let uri_host = Prov.uri_host(prov);
   if (State.exists(ctx.state_ctx, uri_host)) {
     let record = State.get(ctx.state_ctx, uri_host);
     let permissions = find(value(record), ["permissions"]);
-    let secret = get_string(find(value(record), ["secret"]));
+    let target = get_string(find(json, ["target"]));
+    let secret = get_secret(ctx, target);
     if (permissions != dict([]) && secret != "") {
       if (route_exists(record, json)) {
         let path = get_string(find(json, ["path"]));
         let meth = get_string(find(json, ["method"]));
-        let target = get_string(find(json, ["target"]));
         let token = mint_token(path, meth, target, secret);
         ack(Ack.Payload(0,token));
       } else {
