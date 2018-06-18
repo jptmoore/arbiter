@@ -35,7 +35,6 @@ This will register a Store called 'bar' with the arbiter that has an access key 
 
 ```bash
 $ docker run --network host -it jptmoore/zestdb /app/zest/client.exe --server-key 'vl6wu0A@XP?}Or/&BR#LSxn>A+}L)p44/W[wXL3<' --path '/cm/grant-container-permissions' --mode post --payload '{"name": "foo", "caveats": [], "route": {"method": "GET", "path": "/ts/sensor", "target": "bar"}}' --token secret
-[{"method":"GET","path":"/ts/sensor","target":"bar"}]
 ```
 
 This will grant permissions to an App called 'foo' so that it is able to 'GET' data from a path called '/ts/sensor' on a store called 'bar'.
