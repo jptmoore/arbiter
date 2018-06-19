@@ -10,6 +10,7 @@ let router_secret_key = ref("");
 let router_public_key = ref("");
 let token_secret_key = ref("");
 let token_secret_key_file = ref("");
+let databox = ref(false);
 
 type t = {
   zmq_ctx: Protocol.Zest.t,
@@ -29,6 +30,7 @@ let parse_cmdline = () => {
   let speclist = [
     ("--request-endpoint", Arg.Set_string(rep_endpoint), ": to set the request/reply endpoint"),
     ("--enable-logging", Arg.Set(log_mode), ": turn debug mode on"),
+    ("--databox", Arg.Set(databox), ": enable Databox mode"),
     ("--secret-key-file", Arg.Set_string(server_secret_key_file), ": to set the curve secret key"),
     ("--token-key-file", Arg.Set_string(token_secret_key_file), ": to set the token secret key")
     ];
@@ -53,10 +55,19 @@ let data_from_file = (file) =>
       }
   );
 
-let set_server_key = (file) => server_secret_key := data_from_file(file);
+let set_server_key = (file) => 
+  if (file != "") {server_secret_key := data_from_file(file)};
 
 let set_token_key = (file) => 
   if (file != "") {token_secret_key := data_from_file(file)};
+
+
+let enable_databox_mode = () => {
+  server_secret_key := data_from_file("/run/secret/ZMQ_SECRET_KEY"); 
+  token_secret_key := data_from_file("/run/secret/CM_KEY");
+};
+
+
 
 let setup_router_keys = () => {
   let (public_key, private_key) = ZMQ.Curve.keypair();
@@ -428,6 +439,7 @@ let setup_server = () => {
   setup_router_keys();
   set_server_key(server_secret_key_file^);
   set_token_key(token_secret_key_file^);
+  databox^ ? enable_databox_mode () : ();
   let zmq_ctx =
     Protocol.Zest.create(
       ~endpoints=(rep_endpoint^, router_endpoint^),
