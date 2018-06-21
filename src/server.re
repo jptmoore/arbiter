@@ -63,8 +63,8 @@ let set_token_key = (file) =>
 
 
 let enable_databox_mode = () => {
-  server_secret_key := data_from_file("/run/secret/ZMQ_SECRET_KEY"); 
-  token_secret_key := data_from_file("/run/secret/CM_KEY");
+  server_secret_key := data_from_file("/run/secrets/ZMQ_SECRET_KEY"); 
+  token_secret_key := data_from_file("/run/secrets/CM_KEY");
 };
 
 
@@ -179,11 +179,32 @@ let get_route = (record) => {
 };
 
 
+let path_match = (s1, s2) => {
+  String.(length(s1) <= length(s2) && s1 == sub(s2, 0, length(s1) - 1) ++ "*");
+};
+
+
+let route_exists_worker = (r1, r2) => {
+  open Ezjsonm;
+  let path = get_string(find(r1, ["path"]));
+  if (Str.last_chars(path, 1) == "*") {
+    let meth = find(r1, ["method"]);
+    let meth' = find(r2, ["method"]);
+    let target = find(r1, ["target"]);
+    let target' = find(r2, ["target"]);
+    let path' = get_string(find(r2, ["path"]));
+    path_match(path,path') && meth == meth' && target == target'; 
+  } else {
+    r1 == r2;
+  };
+};
+
 let route_exists = (record, route) => {
   open Ezjsonm;
   let arr = get_route(record);
   let lis = get_list((x) => x, arr);
-  List.exists((x) => x == route) (lis);
+  List.exists((x) => route_exists_worker(x,route)) (lis);
+  /* List.exists((x) => x == route) (lis); */
 };
 
 
