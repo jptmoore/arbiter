@@ -63,8 +63,8 @@ let set_token_key = (file) =>
 
 
 let enable_databox_mode = () => {
-  server_secret_key := data_from_file("/run/secret/ZMQ_SECRET_KEY"); 
-  token_secret_key := data_from_file("/run/secret/CM_KEY");
+  server_secret_key := data_from_file("/run/secrets/ZMQ_SECRET_KEY"); 
+  token_secret_key := data_from_file("/run/secrets/CM_KEY");
 };
 
 
