@@ -1,8 +1,8 @@
 
 open Lwt.Infix;
 
-let rep_endpoint = ref("tcp://0.0.0.0:5555");
-let router_endpoint = ref("tcp://0.0.0.0:5556");
+let rep_endpoint = ref("tcp://0.0.0.0:4444");
+let router_endpoint = ref("tcp://0.0.0.0:4445");
 let log_mode = ref(false);
 let server_secret_key_file = ref("");
 let server_secret_key = ref("");
