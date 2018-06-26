@@ -12,13 +12,13 @@ You can run a server and test client using [Docker](https://www.docker.com/). Ea
 #### starting server
 
 ```bash
-$ docker run -p 5555:5555 -p 5556:5556 -d --name arbiter --rm jptmoore/arbiter /app/zest/server.exe --secret-key-file example-server-key --token-key-file example-token-key
+$ docker run -p 4444:4444 -p 4445:4445 -d --name arbiter --rm jptmoore/arbiter /app/zest/server.exe --secret-key-file example-server-key --token-key-file example-token-key
 ```
 
 #### running client to register an App with arbiter
 
 ```bash
-$ docker run --network host -it jptmoore/zestdb /app/zest/client.exe --server-key 'vl6wu0A@XP?}Or/&BR#LSxn>A+}L)p44/W[wXL3<' --path '/cm/upsert-container-info' --mode post --payload '{"name": "foo", "type": "app", "key": "foosecret"}' --token secret
+$ docker run --network host -it jptmoore/zestdb /app/zest/client.exe --server-key 'vl6wu0A@XP?}Or/&BR#LSxn>A+}L)p44/W[wXL3<' --path '/cm/upsert-container-info' --mode post --payload '{"name": "foo", "type": "app", "key": "foosecret"}' --token secret --request-endpoint tcp://0.0.0.0:4444
 ```
 
 This will register an App called 'foo' with the arbiter that has an access key of 'foosecret'.
@@ -26,7 +26,7 @@ This will register an App called 'foo' with the arbiter that has an access key o
 #### running client to register a Store with arbiter
 
 ```bash
-$ docker run --network host -it jptmoore/zestdb /app/zest/client.exe --server-key 'vl6wu0A@XP?}Or/&BR#LSxn>A+}L)p44/W[wXL3<' --path '/cm/upsert-container-info' --mode post --payload '{"name": "bar", "type": "store", "key": "barsecret"}' --token secret
+$ docker run --network host -it jptmoore/zestdb /app/zest/client.exe --server-key 'vl6wu0A@XP?}Or/&BR#LSxn>A+}L)p44/W[wXL3<' --path '/cm/upsert-container-info' --mode post --payload '{"name": "bar", "type": "store", "key": "barsecret"}' --token secret --request-endpoint tcp://0.0.0.0:4444
 ```
 
 This will register a Store called 'bar' with the arbiter that has an access key of 'barsecret'.
@@ -34,7 +34,7 @@ This will register a Store called 'bar' with the arbiter that has an access key 
 #### running client to grant permissions to an App
 
 ```bash
-$ docker run --network host -it jptmoore/zestdb /app/zest/client.exe --server-key 'vl6wu0A@XP?}Or/&BR#LSxn>A+}L)p44/W[wXL3<' --path '/cm/grant-container-permissions' --mode post --payload '{"name": "foo", "caveats": [], "route": {"method": "GET", "path": "/ts/sensor/*", "target": "bar"}}' --token secret
+$ docker run --network host -it jptmoore/zestdb /app/zest/client.exe --server-key 'vl6wu0A@XP?}Or/&BR#LSxn>A+}L)p44/W[wXL3<' --path '/cm/grant-container-permissions' --mode post --payload '{"name": "foo", "caveats": [], "route": {"method": "GET", "path": "/ts/sensor/*", "target": "bar"}}' --token secret --request-endpoint tcp://0.0.0.0:4444
 ```
 
 This will grant permissions to an App called 'foo' so that it is able to 'GET' data from a path that begins with '/ts/sensor' on a store called 'bar'.
@@ -42,7 +42,7 @@ This will grant permissions to an App called 'foo' so that it is able to 'GET' d
 #### running client to get token secret for Store
 
 ```bash
-$ docker run --network host -it jptmoore/zestdb /app/zest/client.exe --server-key 'vl6wu0A@XP?}Or/&BR#LSxn>A+}L)p44/W[wXL3<' --path '/store/secret' --mode get --identity bar --token barsecret
+$ docker run --network host -it jptmoore/zestdb /app/zest/client.exe --server-key 'vl6wu0A@XP?}Or/&BR#LSxn>A+}L)p44/W[wXL3<' --path '/store/secret' --mode get --identity bar --token barsecret --request-endpoint tcp://0.0.0.0:4444
 ```
 
 This will allow a Store called 'bar' to retrieve a secret used to verify tokens from App's and Drivers. The 'identity' flag is used here to set the 'uri_host' option in the Zest protocol. Without this flag the Unix hostname will be supplied in the GET request.
@@ -50,7 +50,7 @@ This will allow a Store called 'bar' to retrieve a secret used to verify tokens 
 #### running client to generate token for App
 
 ```bash
-$ docker run --network host -it jptmoore/zestdb /app/zest/client.exe --server-key 'vl6wu0A@XP?}Or/&BR#LSxn>A+}L)p44/W[wXL3<' --path '/token' --mode post --payload '{"method": "GET", "path": "/ts/sensor/latest", "target": "bar"}' --identity foo --token foosecret
+$ docker run --network host -it jptmoore/zestdb /app/zest/client.exe --server-key 'vl6wu0A@XP?}Or/&BR#LSxn>A+}L)p44/W[wXL3<' --path '/token' --mode post --payload '{"method": "GET", "path": "/ts/sensor/latest", "target": "bar"}' --identity foo --token foosecret --request-endpoint tcp://0.0.0.0:4444
 ```
 
 This will generate an access token for an App called 'foo' that has permissions to be spent by a Store called 'bar' provided the exact permissions have been previously granted and a secret has also be generated. The 'identity' flag is used here to set the 'uri_host' option in the Zest protocol. Without this flag the Unix hostname will be supplied in the POST request.
