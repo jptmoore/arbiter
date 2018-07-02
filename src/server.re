@@ -374,15 +374,19 @@ let handle_post_revoke_container_permissions = (ctx, prov, payload) => {
     };
 };
 
+let is_cm = (prov) => {
+  Prov.token(prov) == token_secret_key^;
+};
+
 let handle_post = (ctx, prov, payload) => {
   let uri_path = Prov.uri_path(prov);
   let path_list = String.split_on_char('/', uri_path);
   switch path_list {
     | ["", "token"] => handle_post_token(ctx, prov, payload);
-    | ["", "cm", "upsert-container-info"] => handle_post_upsert_container_info(ctx, prov, payload);
-    | ["", "cm", "delete-container-info"] => handle_post_delete_container_info(ctx, prov, payload);
-    | ["", "cm", "grant-container-permissions"] => handle_post_grant_container_permissions(ctx, prov, payload);
-    | ["", "cm", "revoke-container-permissions"] => handle_post_revoke_container_permissions(ctx, prov, payload);
+    | ["", "cm", "upsert-container-info"] when is_cm(prov) => handle_post_upsert_container_info(ctx, prov, payload);
+    | ["", "cm", "delete-container-info"] when is_cm(prov) => handle_post_delete_container_info(ctx, prov, payload);
+    | ["", "cm", "grant-container-permissions"] when is_cm(prov) => handle_post_grant_container_permissions(ctx, prov, payload);
+    | ["", "cm", "revoke-container-permissions"] when is_cm(prov) => handle_post_revoke_container_permissions(ctx, prov, payload);
     | _ => ack(Ack.Code(128)); 
     };
 };
