@@ -89,14 +89,13 @@ let ack = (kind) =>
       | Observe(key, uuid) => Protocol.Zest.create_ack_observe(key, uuid)
       }
     )
-    |> Lwt.return
   );
 
 let unhandled_error = (e, ctx) => {
   let msg = Printexc.to_string(e);
   let stack = Printexc.get_backtrace();
   Logger.error_f("unhandled_error", Printf.sprintf("%s%s", msg, stack))
-  >>= (() => ack(Ack.Code(160)) >>= ((resp) => Protocol.Zest.send(ctx.zmq_ctx, resp)));
+  >>= () => Protocol.Zest.send(ctx.zmq_ctx, ack(Ack.Code(160)));
 };
 
 let handle_options = (oc, bits) => {
@@ -114,7 +113,7 @@ let handle_options = (oc, bits) => {
 };
 
 let handle_get_status = (ctx, prov) => {
-  ack(Ack.Code(65));
+  Ack.Code(65);
 };
 
 let create_uuid = () => Uuidm.v4_gen(Random.State.make_self_init(), ()) |> Uuidm.to_string;
@@ -129,15 +128,15 @@ let handle_get_store_secret = (ctx, prov) => {
     let json = update(value(record), ["secret"], Some(string(secret)));
     let obj = `O(get_dict(json));
     State.replace(ctx.state_ctx, uri_host, obj);
-    ack(Ack.Payload(0, secret));
+    Ack.Payload(0, secret);
   } else {
-    ack(Ack.Code(129)); 
+    Ack.Code(129); 
   }
 };
 
 let handle_get_cat = (ctx, prov) => {
   let json = Hypercat.get(ctx.hypercat_ctx);
-  ack(Ack.Payload(50, Ezjsonm.to_string(json)));
+  Ack.Payload(50, Ezjsonm.to_string(json));
 };
 
 
@@ -148,7 +147,7 @@ let handle_get = (ctx, prov) => {
     | ["", "status"] => handle_get_status(ctx, prov);
     | ["", "store", "secret"] => handle_get_store_secret(ctx, prov);
     | ["", "cat"] => handle_get_cat(ctx, prov);
-    | _ => ack(Ack.Code(128)); 
+    | _ => Ack.Code(128); 
     };
 };
 
@@ -237,22 +236,22 @@ let handle_token = (ctx, prov, json) => {
         let path = get_string(find(json, ["path"]));
         let meth = get_string(find(json, ["method"]));
         let token = mint_token(path, meth, target, secret);
-        ack(Ack.Payload(0,token));
+        Ack.Payload(0,token);
       } else {
-        ack(Ack.Code(129));
+        Ack.Code(129);
       }
     } else {
-      ack(Ack.Code(129));
+      Ack.Code(129);
     };
   } else {
-    ack(Ack.Code(129));
+    Ack.Code(129);
   };
 };
 
 let handle_post_token = (ctx, prov, payload) => {
   switch (to_json(payload)) {
-    | Some(json) => is_valid_token_data(json) ? handle_token(ctx,prov,json) : ack(Ack.Code(128)); 
-    | None => ack(Ack.Code(128)); 
+    | Some(json) => is_valid_token_data(json) ? handle_token(ctx,prov,json) : Ack.Code(128); 
+    | None => Ack.Code(128); 
     };
 };
 
@@ -270,13 +269,13 @@ let upsert_container_info = (ctx, prov, json) => {
   let obj = `O(get_dict(json''));
   State.add(ctx.state_ctx, name, obj);
   let _ = Logger.info_f("upsert_container_info", to_string(obj));
-  ack(Ack.Payload(0,name));
+  Ack.Payload(0,name);
 };
 
 let handle_post_upsert_container_info = (ctx, prov, payload) => {
   switch (to_json(payload)) {
-    | Some(json) => is_valid_upsert_container_info_data(json) ? upsert_container_info(ctx, prov, json) : ack(Ack.Code(128)); 
-    | None => ack(Ack.Code(128)); 
+    | Some(json) => is_valid_upsert_container_info_data(json) ? upsert_container_info(ctx, prov, json) : Ack.Code(128); 
+    | None => Ack.Code(128); 
     };
 };
 
@@ -290,14 +289,14 @@ let delete_container_info = (ctx, prov, json) => {
   let name = get_string(find(json, ["name"]));
   Hypercat.remove(ctx.hypercat_ctx, name);
   State.remove(ctx.state_ctx, name);
-  ack(Ack.Code(66));
+  Ack.Code(66);
 };
 
 
 let handle_post_delete_container_info = (ctx, prov, payload) => {
   switch (to_json(payload)) {
-    | Some(json) => is_valid_delete_container_info_data(json) ? delete_container_info(ctx,prov,json) : ack(Ack.Code(128)); 
-    | None => ack(Ack.Code(128)); 
+    | Some(json) => is_valid_delete_container_info_data(json) ? delete_container_info(ctx,prov,json) : Ack.Code(128); 
+    | None => Ack.Code(128); 
     };
 };
 
@@ -332,9 +331,9 @@ let grant_container_permissions = (ctx, prov, json) => {
     State.replace(ctx.state_ctx, name, obj);
     let _ = Logger.info_f("grant_container_permissions", to_string(obj));
     let arr = `A(get_list((x) => x, get_route(obj)));
-    ack(Ack.Payload(50,to_string(arr)));
+    Ack.Payload(50,to_string(arr));
   } else {
-    ack(Ack.Code(129))
+    Ack.Code(129)
   };
 };
 
@@ -358,25 +357,25 @@ let revoke_container_permissions = (ctx, prov, json) => {
     State.replace(ctx.state_ctx, name, obj);
     let _ = Logger.info_f("revoke_container_permissions", to_string(obj));
     let arr = `A(get_list((x) => x, get_route(obj)));
-    ack(Ack.Payload(50,to_string(arr)));
+    Ack.Payload(50,to_string(arr));
   } else {
-    ack(Ack.Code(129))
+    Ack.Code(129)
   };
 };
 
 
 let handle_post_grant_container_permissions = (ctx, prov, payload) => {
   switch (to_json(payload)) {
-    | Some(json) => is_valid_container_permissions_data(ctx,json) ? grant_container_permissions(ctx,prov,json) : ack(Ack.Code(128)); 
-    | None => ack(Ack.Code(128)); 
+    | Some(json) => is_valid_container_permissions_data(ctx,json) ? grant_container_permissions(ctx,prov,json) : Ack.Code(128); 
+    | None => Ack.Code(128); 
     };
 };
 
 
 let handle_post_revoke_container_permissions = (ctx, prov, payload) => {
   switch (to_json(payload)) {
-    | Some(json) => is_valid_container_permissions_data(ctx,json) ? revoke_container_permissions(ctx,prov,json) : ack(Ack.Code(128)); 
-    | None => ack(Ack.Code(128)); 
+    | Some(json) => is_valid_container_permissions_data(ctx,json) ? revoke_container_permissions(ctx,prov,json) : Ack.Code(128); 
+    | None => Ack.Code(128); 
     };
 };
 
@@ -393,7 +392,7 @@ let handle_post = (ctx, prov, payload) => {
     | ["", "cm", "delete-container-info"] when is_cm(prov) => handle_post_delete_container_info(ctx, prov, payload);
     | ["", "cm", "grant-container-permissions"] when is_cm(prov) => handle_post_grant_container_permissions(ctx, prov, payload);
     | ["", "cm", "revoke-container-permissions"] when is_cm(prov) => handle_post_revoke_container_permissions(ctx, prov, payload);
-    | _ => ack(Ack.Code(128)); 
+    | _ => Ack.Code(128); 
     };
 };
 
@@ -521,7 +520,7 @@ let handle_expire = (ctx) =>
   >>= ((uuids) => route_message(uuids, ctx, Ack.Code(163), Protocol.Zest.create_ack(163), None));
 
 let handle_msg = (msg, ctx) => {
-  Logger.debug_f("handle_msg", Printf.sprintf("Received:\n%s", msg)) >>= (() => {
+  Logger.debug_f("handle_msg", Printf.sprintf("Received:\n%s", msg)) >>= () => {
     let r0 = Bitstring.bitstring_of_string(msg);
     let (tkl, oc, code, r1) = Protocol.Zest.handle_header(r0);
     let (token, r2) = Protocol.Zest.handle_token(r1, tkl);
@@ -532,24 +531,26 @@ let handle_msg = (msg, ctx) => {
       switch code {
       | 1 => handle_get(ctx, prov);
       | 2 => handle_post(ctx, prov, payload);
-      | _ => ack(Ack.Code(128));
+      | _ => Ack.Code(128);
       }
     } else {
-      ack(Ack.Code(129)); 
-    };
-  });
+      Ack.Code(129);
+    }
+  } |> Lwt.return
 };
+
 
 let server = (ctx) => {
   open Logger;
   let rec loop = () =>
-    Protocol.Zest.recv(ctx.zmq_ctx) >>= ((msg) =>
-      handle_msg(msg, ctx) >>= ((resp) =>
-        Protocol.Zest.send(ctx.zmq_ctx, resp) >>= (() =>
-          Logger.debug_f("server", Printf.sprintf("Sending:\n%s", resp)) >>= (() => 
-            loop()))));
+    Protocol.Zest.recv(ctx.zmq_ctx) >>= 
+      (msg) => handle_msg(msg, ctx) >>= 
+        (resp) => Protocol.Zest.send(ctx.zmq_ctx, ack(resp)) >>= 
+          () => Logger.debug_f("server", Printf.sprintf("Sending:\n%s", ack(resp))) >>= 
+            () => loop();
   Logger.info_f("server", "active") >>= (() => loop());
 };
+
 
 let terminate_server = (ctx, m) => {
   Lwt_io.printf("Shutting down server...\n")
