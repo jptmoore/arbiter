@@ -170,7 +170,25 @@ let create_ack_payload = (format_code, payload) => {
   Bitstring.string_of_bitstring(bits);
 };
 
+let create_ack_observe_options = (~format, ~key) => {
+  let content_format = create_option(~number=12, ~value=format);
+  let public_key = create_option(~number=2048, ~value=key);
+  create_options([|content_format, public_key|]);
+};
 
+let create_ack_observe = (public_key, ~uuid as payload) => {
+  let (options_value, options_length, options_count) =
+    create_ack_observe_options(~format=create_content_format(0), ~key=public_key);
+  let (header_value, header_length) = create_header(~tkl=0, ~oc=options_count, ~code=69);
+  let payload_bytes = String.length(payload) * 8;
+  let bits = [%bitstring
+    {|header_value : header_length : bitstring;
+      options_value : options_length : bitstring;
+      payload : payload_bytes : string
+    |}
+  ];
+  Bitstring.string_of_bitstring(bits);
+};
 
 let create_ack = (code) => {
   let (header_value, header_length) = create_header(~tkl=0, ~oc=0, ~code=code);
