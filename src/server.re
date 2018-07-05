@@ -50,6 +50,12 @@ let init = (zmq_ctx)  => {
   version: 1
 };
 
+let get_time = () => {
+  let t_sec = Unix.gettimeofday();
+  let t_ms = t_sec *. 1000.0;
+  int_of_float(t_ms);
+};
+
 let data_from_file = (file) =>
   Fpath.v(file)
   |> Bos.OS.File.read
@@ -139,16 +145,113 @@ let handle_get_cat = (ctx, prov) => {
   Ack.Payload(50, Ezjsonm.to_string(json));
 };
 
+let create_audit_payload_worker = (prov, code, resp_code) => {
+  open Protocol.Zest;
+  let uri_host = Prov.uri_host(prov);
+  let uri_path = Prov.uri_path(prov);
+  let timestamp = get_time();
+  let server = identity^;
+  create_ack_payload(
+    69,
+    Printf.sprintf("%d %s %s %s %s %d", timestamp, server, uri_host, code, uri_path, resp_code)
+  );
+};
+
+let create_audit_payload = (prov, status, payload) =>
+  switch prov {
+  | Some((prov')) =>
+    let meth = Prov.code_as_string(prov');
+    switch status {
+    | Ack.Code(163) => Some(payload)
+    | Ack.Code(n) => Some(create_audit_payload_worker(prov', meth, n))
+    | Ack.Payload(_) => Some(create_audit_payload_worker(prov', "GET", 69))
+    | Ack.Observe(_) => Some(create_audit_payload_worker(prov', "GET(OBSERVE)", 69))
+    };
+  | None => Some(payload)
+  };
+
+let create_data_payload_worker = (prov, payload) =>
+  switch prov {
+  | Some((prov')) =>
+    let uri_path = Prov.uri_path(prov');
+    let content_format = Prov.content_format_as_string(prov');
+    let timestamp = get_time();
+    let entry = Printf.sprintf("%d %s %s %s", timestamp, uri_path, content_format, payload);
+    Protocol.Zest.create_ack_payload(69, entry);
+  | None => Protocol.Zest.create_ack(163)
+  };
+
+let create_data_payload = (prov, status, payload) =>
+  switch status {
+  | Ack.Code(163) => Some(payload)
+  | Ack.Observe(_) => None
+  | Ack.Code(128) => None
+  | Ack.Code(129) => None
+  | Ack.Code(143) => None
+  | Ack.Code(66) => None
+  | Ack.Payload(_) => None
+  | Ack.Code(_) => Some(create_data_payload_worker(prov, payload))
+  };
+
+let create_router_payload = (prov, mode, status, payload) =>
+  switch mode {
+  | "data" => create_data_payload(prov, status, payload)
+  | "audit" => create_audit_payload(prov, status, payload)
+  | _ => Some(Protocol.Zest.create_ack(128))
+  };
+
+
+let route_message = (alist, ctx, status, payload, prov) => {
+  open Logger;
+  let rec loop = (l) =>
+    switch l {
+    | [] => Lwt.return_unit
+    | [(ident, expiry, mode), ...rest] =>
+      switch (create_router_payload(prov, mode, status, payload)) {
+      | Some((payload')) =>
+        Protocol.Zest.route(ctx.zmq_ctx, ident, payload')
+        >>= (
+          () =>
+            debug_f(
+              "routing",
+              Printf.sprintf(
+                "Routing to ident:%s with expiry:%lu and mode:%s",
+                ident,
+                expiry,
+                mode
+              )
+            )
+            >>= (() => loop(rest))
+        )
+      | None => loop(rest)
+      }
+    };
+  loop(alist);
+};
+
+let route = (status, payload, ctx, prov) => {
+  let key = Prov.ident(prov);
+  route_message(Observe.get(ctx.observe_ctx, key), ctx, status, payload, Some(prov));
+};
+
 
 let handle_get = (ctx, prov) => {
   let uri_path = Prov.uri_path(prov);
   let path_list = String.split_on_char('/', uri_path);
-  switch path_list {
-    | ["", "status"] => handle_get_status(ctx, prov);
-    | ["", "store", "secret"] => handle_get_store_secret(ctx, prov);
-    | ["", "cat"] => handle_get_cat(ctx, prov);
-    | _ => Ack.Code(128); 
-    };
+  let observed = Prov.observed(prov);
+  if ((observed == "data") || (observed == "audit")) {
+    let uuid = create_uuid();
+    let status = Ack.Observe(router_public_key^, uuid);
+    let _ = Observe.add(ctx.observe_ctx, uuid, prov) >>= () => route(status, "", ctx, prov);
+    status;
+  } else {
+    switch path_list {
+      | ["", "status"] => handle_get_status(ctx, prov);
+      | ["", "store", "secret"] => handle_get_store_secret(ctx, prov);
+      | ["", "cat"] => handle_get_cat(ctx, prov);
+      | _ => Ack.Code(128); 
+      };
+  };
 };
 
 
@@ -419,101 +522,7 @@ let is_valid_token = (ctx, prov) => {
 };
 
 
-let get_time = () => {
-  let t_sec = Unix.gettimeofday();
-  let t_ms = t_sec *. 1000.0;
-  int_of_float(t_ms);
-};
 
-
-let create_audit_payload_worker = (prov, code, resp_code) => {
-  open Protocol.Zest;
-  let uri_host = Prov.uri_host(prov);
-  let uri_path = Prov.uri_path(prov);
-  let timestamp = get_time();
-  let server = identity^;
-  create_ack_payload(
-    69,
-    Printf.sprintf("%d %s %s %s %s %d", timestamp, server, uri_host, code, uri_path, resp_code)
-  );
-};
-
-let create_audit_payload = (prov, status, payload) =>
-  switch prov {
-  | Some((prov')) =>
-    let meth = Prov.code_as_string(prov');
-    switch status {
-    | Ack.Code(163) => Some(payload)
-    | Ack.Code(n) => Some(create_audit_payload_worker(prov', meth, n))
-    | Ack.Payload(_) => Some(create_audit_payload_worker(prov', "GET", 69))
-    | Ack.Observe(_) => Some(create_audit_payload_worker(prov', "GET(OBSERVE)", 69))
-    };
-  | None => Some(payload)
-  };
-
-let create_data_payload_worker = (prov, payload) =>
-  switch prov {
-  | Some((prov')) =>
-    let uri_path = Prov.uri_path(prov');
-    let content_format = Prov.content_format_as_string(prov');
-    let timestamp = get_time();
-    let entry = Printf.sprintf("%d %s %s %s", timestamp, uri_path, content_format, payload);
-    Protocol.Zest.create_ack_payload(69, entry);
-  | None => Protocol.Zest.create_ack(163)
-  };
-
-let create_data_payload = (prov, status, payload) =>
-  switch status {
-  | Ack.Code(163) => Some(payload)
-  | Ack.Observe(_) => None
-  | Ack.Code(128) => None
-  | Ack.Code(129) => None
-  | Ack.Code(143) => None
-  | Ack.Code(66) => None
-  | Ack.Payload(_) => None
-  | Ack.Code(_) => Some(create_data_payload_worker(prov, payload))
-  };
-
-let create_router_payload = (prov, mode, status, payload) =>
-  switch mode {
-  | "data" => create_data_payload(prov, status, payload)
-  | "audit" => create_audit_payload(prov, status, payload)
-  | _ => Some(Protocol.Zest.create_ack(128))
-  };
-
-
-let route_message = (alist, ctx, status, payload, prov) => {
-  open Logger;
-  let rec loop = (l) =>
-    switch l {
-    | [] => Lwt.return_unit
-    | [(ident, expiry, mode), ...rest] =>
-      switch (create_router_payload(prov, mode, status, payload)) {
-      | Some((payload')) =>
-        Protocol.Zest.route(ctx.zmq_ctx, ident, payload')
-        >>= (
-          () =>
-            debug_f(
-              "routing",
-              Printf.sprintf(
-                "Routing to ident:%s with expiry:%lu and mode:%s",
-                ident,
-                expiry,
-                mode
-              )
-            )
-            >>= (() => loop(rest))
-        )
-      | None => loop(rest)
-      }
-    };
-  loop(alist);
-};
-
-let route = (status, payload, ctx, prov) => {
-  let key = Prov.ident(prov);
-  route_message(Observe.get(ctx.observe_ctx, key), ctx, status, payload, Some(prov));
-};
 
 let handle_expire = (ctx) =>
   Observe.expire(ctx.observe_ctx) >>= 
