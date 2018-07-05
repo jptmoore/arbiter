@@ -574,14 +574,32 @@ let server = (ctx) => {
 };
 
 
+let cleanup_router = (ctx) => {
+  Observe.get_all(ctx.observe_ctx) |> 
+    (uuids) => route_message(uuids, ctx, Ack.Code(163), Protocol.Zest.create_ack(163), None) >>= 
+      () => Lwt_unix.sleep(1.0)
+};
+
 let terminate_server = (ctx, m) => {
-  Lwt_io.printf("Shutting down server...\n")
-    >>= (() => Protocol.Zest.close(ctx.zmq_ctx) |> (() => exit(0)));
+  Lwt_io.printf("\nShutting down server...\n") >>= 
+    () => cleanup_router(ctx) >>= () => Protocol.Zest.close(ctx.zmq_ctx) |> (() => exit(0));
+};
+
+
+
+exception Interrupt(string);
+
+let register_signal_handlers = () => {
+  Lwt_unix.(
+    on_signal(Sys.sigterm, (_) => raise(Interrupt("Caught SIGTERM"))) |> 
+      (id) => on_signal(Sys.sighup, (_) => raise(Interrupt("Caught SIGHUP"))) |> 
+        (id) => on_signal(Sys.sigint, (_) => raise(Interrupt("Caught SIGINT"))))
 };
 
 let rec run_server = (ctx) => {
   let _ =
     try (Lwt_main.run(server(ctx))) {
+    | Interrupt(m) => terminate_server(ctx, m);
     | e => unhandled_error(e, ctx)
     };
   run_server(ctx);
@@ -600,6 +618,7 @@ let setup_server = () => {
       ~keys=(server_secret_key^, router_secret_key^)
     );
   let ctx = init(zmq_ctx);
+  let _ = register_signal_handlers();  
   run_server(ctx) |> (() => terminate_server(ctx));
 };
 
