@@ -519,6 +519,16 @@ let handle_expire = (ctx) =>
   Observe.expire(ctx.observe_ctx)
   >>= ((uuids) => route_message(uuids, ctx, Ack.Code(163), Protocol.Zest.create_ack(163), None));
 
+let handle_route = (status, payload, ctx, prov) => {
+  let key = Prov.ident(prov);
+  if (Observe.is_observed(ctx.observe_ctx, key)) {
+    route(status, payload, ctx, prov) >>=
+      () => Lwt.return(status)
+  } else {
+    Lwt.return(status);
+  }
+};
+
 let handle_msg = (msg, ctx) => {
   Logger.debug_f("handle_msg", Printf.sprintf("Received:\n%s", msg)) >>= () => {
     let r0 = Bitstring.bitstring_of_string(msg);
@@ -526,17 +536,18 @@ let handle_msg = (msg, ctx) => {
     let (token, r2) = Protocol.Zest.handle_token(r1, tkl);
     let (options, r3) = handle_options(oc, r2);
     let prov = Prov.create(~code=code, ~options=options, ~token=token);
+    let payload = Bitstring.string_of_bitstring(r3);
     if (is_valid_token(ctx, prov)) {
-      let payload = Bitstring.string_of_bitstring(r3);
-      switch code {
+      let status = switch code {
       | 1 => handle_get(ctx, prov);
       | 2 => handle_post(ctx, prov, payload);
       | _ => Ack.Code(128);
-      }
+      };
+      handle_route(status, payload, ctx, prov);
     } else {
-      Ack.Code(129);
+      handle_route(Ack.Code(129), payload, ctx, prov);
     }
-  } |> Lwt.return
+  } 
 };
 
 
