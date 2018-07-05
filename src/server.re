@@ -189,6 +189,7 @@ let create_data_payload = (prov, status, payload) =>
   | Ack.Code(129) => None
   | Ack.Code(143) => None
   | Ack.Code(66) => None
+  | Ack.Payload(_) when payload == "" => None
   | Ack.Payload(_) => Some(create_data_payload_worker(prov, payload))
   | Ack.Code(_) => Some(create_data_payload_worker(prov, payload))
   };
