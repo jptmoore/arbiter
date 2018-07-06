@@ -55,6 +55,43 @@ $ docker run --network host -it jptmoore/zestdb /app/zest/client.exe --server-ke
 
 This will generate an access token for an App called 'foo' that has permissions to be spent by a Store called 'bar' provided the exact permissions have been previously granted and a secret has also be generated. The 'identity' flag is used here to set the 'uri_host' option in the Zest protocol. Without this flag the Unix hostname will be supplied in the POST request.
 
+
+### Logging
+
+Logging takes place over the middleware. There two ways to monitor data: observing data or observing meta-data (audit mode).
+
+#### Data
+
+To receive a copy of any data posted to specific paths (including wildcard paths) you can do something like the following:
+
+```bash
+$ docker run --network host -it jptmoore/zestdb /app/zest/client.exe --server-key 'vl6wu0A@XP?}Or/&BR#LSxn>A+}L)p44/W[wXL3<' --path '/*' --mode observe --request-endpoint 'tcp://0.0.0.0:4444' --router-endpoint 'tcp://0.0.0.0:4445' --observe-mode data --token secret
+```
+
+This will subscribe to any path and produce output such as:
+
+```
+#timestamp #uri-path #content-format #data
+1530865659656 /cm/upsert-container-info json {"name": "foo", "type": "app", "key": "foosecret"}
+1530865661634 /cm/grant-container-permissions json {"name": "foo", "caveats": [], "route": {"method": "GET", "path": "/ts/sensor", "target": "bar"}}
+```
+
+#### Meta-data
+
+To receive a copy of the meta-data of any request you need to set the 'observe-mode' flag to 'audit'. For example:
+
+```bash
+$ docker run --network host -it jptmoore/zestdb /app/zest/client.exe --server-key 'vl6wu0A@XP?}Or/&BR#LSxn>A+}L)p44/W[wXL3<' --path '/*' --mode observe --request-endpoint 'tcp://0.0.0.0:4444' --router-endpoint 'tcp://0.0.0.0:4445' --observe-mode audit --token secret
+```
+
+This will subscribe to any path and produce output such as:
+
+```
+#timestamp #server-name #client-name #method #uri-path #response-code
+1530882230648 zedstar Johns-MacBook-Pro-3.local POST /cm/upsert-container-info 69
+1530882232664 zedstar Johns-MacBook-Pro-3.local POST /cm/grant-container-permissions 69
+```
+
 ### API
 
 #### Status request
