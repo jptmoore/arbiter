@@ -10,6 +10,8 @@ let init = () => {
     Lwt_log_core.add_rule("*", Lwt_log_core.Info);
     Lwt_log_core.add_rule("*", Lwt_log_core.Debug);
   };
+
+  let to_hex = (msg) => Hex.(String.trim(of_string(msg) |> hexdump_s(~print_chars=false)));
   
   let info_f = (s1, s2) => Lwt_log_core.info_f("%s:%s", s1, s2);
   

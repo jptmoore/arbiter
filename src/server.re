@@ -216,7 +216,8 @@ let route_message = (alist, ctx, status, payload, prov) => {
             debug_f(
               "routing",
               Printf.sprintf(
-                "Routing to ident:%s with expiry:%lu and mode:%s",
+                "Routing:\n%s to ident:%s with expiry:%lu and mode:%s",
+                to_hex(payload'),
                 ident,
                 expiry,
                 mode
@@ -540,8 +541,9 @@ let handle_route = (status, payload, ctx, prov) => {
 };
 
 let handle_msg = (msg, ctx) => {
+  open Logger;
   handle_expire(ctx) >>= () => {
-    Logger.debug_f("handle_msg", Printf.sprintf("Received:\n%s", msg)) >>= () => {
+    Logger.debug_f("handle_msg", Printf.sprintf("Received:\n%s", to_hex(msg))) >>= () => {
       let r0 = Bitstring.bitstring_of_string(msg);
       let (tkl, oc, code, r1) = Protocol.Zest.handle_header(r0);
       let (token, r2) = Protocol.Zest.handle_token(r1, tkl);
@@ -569,7 +571,7 @@ let server = (ctx) => {
     Protocol.Zest.recv(ctx.zmq_ctx) >>= 
       (msg) => handle_msg(msg, ctx) >>= 
         (resp) => Protocol.Zest.send(ctx.zmq_ctx, ack(resp)) >>= 
-          () => Logger.debug_f("server", Printf.sprintf("Sending:\n%s", ack(resp))) >>= 
+          () => Logger.debug_f("server", Printf.sprintf("Sending:\n%s", to_hex(ack(resp)))) >>= 
             () => loop();
   Logger.info_f("server", "active") >>= (() => loop());
 };
