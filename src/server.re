@@ -274,12 +274,17 @@ let is_valid_token_data = (json) => {
 
 
 
-let mint_token = (path, meth, target, key) => {
+let mint_token = (~path, ~meth, ~target, ~key, ~observe=None, ()) => {
   open Printf;
   let path = sprintf("path = %s", path);
   let meth = sprintf("method = %s", meth);
   let target = sprintf("target = %s", target);
-  Mint.mint_token(~path=path, ~meth=meth, ~target=target, ~key=key, ());
+  let observe' = switch (observe) {
+  | Some(x) => Some(sprintf("observe = %s", x))
+  | None => None;
+  };
+  let token = Mint.mint_token(~path, ~meth, ~observe=observe', ~target, ~key, ());
+  Ack.Payload(0,token);
 };
 
 let get_route = (record) => {
@@ -287,7 +292,6 @@ let get_route = (record) => {
   let arr = find(value(record), ["permissions"]);
   `A(get_list((x) => find(x,["route"]), arr));
 };
-
 
 let path_match = (s1, s2) => {
   String.(length(s1) <= length(s2) && s1 == sub(s2, 0, length(s1) - 1) ++ "*");
@@ -328,6 +332,29 @@ let get_secret = (ctx, target) => {
   }
 };
 
+let get_caveats = (json) => {
+  open Ezjsonm;
+  get_list((x) => find(x,["caveats"]), json);
+};
+
+let string_of_observe_caveat = (json) => {
+  open Ezjsonm;
+  let caveat = get_dict(json); 
+  switch (caveat) {
+  | [ (x,y), ..._ ] when x == "observe" => Some(get_string(y))
+  | _ => None;
+  } 
+};
+
+let get_observe_caveat = (json) => {
+  open Ezjsonm;
+  let caveats = get_caveats(json);
+  switch (caveats) {
+  | [ `A([observe, ..._]) ] => string_of_observe_caveat(observe)
+  | _ => None;
+  };
+};
+
 let handle_token = (ctx, prov, json) => {
   open Ezjsonm;
   let uri_host = Prov.uri_host(prov);
@@ -340,8 +367,20 @@ let handle_token = (ctx, prov, json) => {
       if (route_exists(record, json)) {
         let path = get_string(find(json, ["path"]));
         let meth = get_string(find(json, ["method"]));
-        let token = mint_token(path, meth, target, secret);
-        Ack.Payload(0,token);
+        switch (get_observe_caveat(permissions)) {
+        | Some(x) => {
+            switch (get_observe_caveat(wrap(json))) {
+            | Some(y) when x == y => mint_token(~path=path, ~meth=meth, ~observe=Some(x), ~target=target, ~key=secret, ())
+            | _ => Ack.Code(129);
+            };
+          }
+        | None =>  {
+          switch (get_observe_caveat(wrap(json))) {
+            | Some(y) => Ack.Code(129)
+            | _ => mint_token(~path=path, ~meth=meth, ~target=target, ~key=secret, ());
+            };
+          }
+        };
       } else {
         Ack.Code(129);
       }
