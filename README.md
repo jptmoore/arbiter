@@ -115,31 +115,30 @@ This will subscribe to any path and produce output such as:
     Notes: Remove app/driver/store from arbiter
 
 
-#### Grant perimissions
+#### Grant permissions
     URL: /cm/grant-container-permissions
     Method: POST
-    Parameters: JSON dictionary of 'name', 'route' and 'caveats' where route is dictionary of 'name', 'type' and 'target' and 'caveats' is an empty array ('caveats' is currently not used)
+    Parameters: JSON dictionary of 'name', 'route' and 'caveats' where route is dictionary of 'method', 'path' and 'target' and 'caveats' is an array which currently supports an observe restriction on a GET method. 
     Notes: Add permissions to an existing app or driver
     
 
 #### Revoke permissions
     URL: /cm/revoke-container-permissions
     Method: POST
-    Parameters: JSON dictionary of 'name', 'route' and 'caveats' where route is dictionary of 'name', 'type' and 'target' and 'caveats' is an empty array ('caveats' is currently not used)
-    Notes: Revoke permissions from an existing app or driver
-    
+    Parameters: JSON dictionary of 'name', 'route' and 'caveats' where route is dictionary of 'method', 'path' and 'target' and 'caveats' is an array which currently supports an observe restriction on a GET method. 
+    Notes: Add permissions to an existing app or driver    
          
 #### Generate token secret
     URL: /store/secret
     Method: GET
     Parameters: 
-    Notes: generates a secret that is used by a store for verifying access tokens
+    Notes: generates a secret that is used by a store for verifying access tokens 
     
 
 #### Generate token
     URL: /token
     Method: POST
-    Parameters: JSON dictionary of 'method', 'path' and 'target'
+    Parameters: JSON dictionary of 'method', 'path', 'target' and 'caveats' where 'caveats' is an array which currently supports an observe restriction on a GET method. 
     Notes: generates an access token for an app/driver to be spent at a store
     
     
