@@ -470,12 +470,16 @@ let grant_container_permissions = (ctx, prov, json) => {
   let name = get_string(find(json, ["name"]));
   if (State.exists(ctx.state_ctx, name)) {
     let record = State.get(ctx.state_ctx, name);
-    let record' = update(value(record), ["permissions"], Some(add_permissions(record, json)));
-    let obj = `O(get_dict(record'));
-    State.replace(ctx.state_ctx, name, obj);
-    let _ = Logger.info_f("grant_container_permissions", to_string(obj));
-    let arr = `A(get_list((x) => x, get_route(obj)));
-    Ack.Payload(50,to_string(arr));
+    if (!route_exists(record, find(json, ["route"]))) {
+      let record' = update(value(record), ["permissions"], Some(add_permissions(record, json)));
+      let obj = `O(get_dict(record'));
+      State.replace(ctx.state_ctx, name, obj);
+      let _ = Logger.info_f("grant_container_permissions", to_string(obj));
+      let arr = `A(get_list((x) => x, get_route(obj)));
+      Ack.Payload(50,to_string(arr));
+    } else {
+      Ack.Code(134);
+    }
   } else {
     Ack.Code(129)
   };
