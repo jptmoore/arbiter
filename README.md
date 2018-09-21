@@ -50,7 +50,7 @@ This will allow a Store called 'bar' to retrieve a secret used to verify tokens 
 #### running client to generate token for App
 
 ```bash
-$ docker run --network host -it jptmoore/zestdb /app/zest/client.exe --server-key 'vl6wu0A@XP?}Or/&BR#LSxn>A+}L)p44/W[wXL3<' --path '/token' --mode post --payload '{"method": "GET", "path": "/ts/sensor/latest", "target": "bar"}' --identity foo --token foosecret --request-endpoint tcp://0.0.0.0:4444
+$ docker run --network host -it jptmoore/zestdb /app/zest/client.exe --server-key 'vl6wu0A@XP?}Or/&BR#LSxn>A+}L)p44/W[wXL3<' --path '/token' --mode post --payload '{"method": "GET", "caveats": [], "path": "/ts/sensor/latest", "target": "bar"}' --identity foo --token foosecret --request-endpoint tcp://0.0.0.0:4444
 ```
 
 This will generate an access token for an App called 'foo' that has permissions to be spent by a Store called 'bar' provided the exact permissions have been previously granted and a secret has also be generated. The 'identity' flag is used here to set the 'uri_host' option in the Zest protocol. Without this flag the Unix hostname will be supplied in the POST request.
