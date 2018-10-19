@@ -301,15 +301,15 @@ let path_match = (s1, s2) => {
 let route_exists_worker = (r1, r2) => {
   open Ezjsonm;
   let path = get_string(find(r1, ["path"]));
+  let meth = find(r1, ["method"]);
+  let meth' = find(r2, ["method"]);
+  let target = find(r1, ["target"]);
+  let target' = find(r2, ["target"]);
+  let path' = get_string(find(r2, ["path"]));
   if (Str.last_chars(path, 1) == "*") {
-    let meth = find(r1, ["method"]);
-    let meth' = find(r2, ["method"]);
-    let target = find(r1, ["target"]);
-    let target' = find(r2, ["target"]);
-    let path' = get_string(find(r2, ["path"]));
     path_match(path,path') && meth == meth' && target == target'; 
   } else {
-    r1 == r2;
+    path == path' && meth == meth' && target == target'; 
   };
 };
 
