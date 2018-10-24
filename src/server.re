@@ -344,6 +344,7 @@ let string_of_optional_caveat = (json) => {
   | [ (x,y) ] when x == "observe" => string_of_caveat(x,y);
   | [ (x,y), ..._ ] when x == "destination" => string_of_caveat(x,y)
   | _ => None;
+
   } 
 };
 
@@ -351,7 +352,7 @@ let get_optional_caveat = (json) => {
   open Ezjsonm;
   let caveats = get_caveats(json);
   switch (caveats) {
-  | [ `A([x, ..._]) ] => string_of_optional_caveat(x)
+  | [ `A([x, ..._]), ..._ ] => string_of_optional_caveat(x)
   | _ => None;
   };
 };
