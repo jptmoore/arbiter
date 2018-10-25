@@ -333,28 +333,17 @@ let get_caveats = (json) => {
   get_list((x) => find(x,["caveats"]), json);
 };
 
-let string_of_caveat = (x,y) => {
+let string_of_caveat_worker = (x,y) => {
   Some(Printf.sprintf("%s = %s", x, Ezjsonm.get_string(y)));
 };
 
-let string_of_optional_caveat = (json) => {
+let string_of_caveat = (caveat) => {
   open Ezjsonm;
-  let caveat = get_dict(json); 
-  switch (caveat) {
-  | [ (x,y) ] when x == "observe" => string_of_caveat(x,y);
-  | [ (x,y), ..._ ] when x == "destination" => string_of_caveat(x,y)
+  switch (get_list(get_dict, caveat)) {
+  | [ [(x,y)] ] when x == "observe" => string_of_caveat_worker(x,y);
+  | [ [(x,y)] ] when x == "destination" => string_of_caveat_worker(x,y)
   | _ => None;
-
   } 
-};
-
-let get_optional_caveat = (json) => {
-  open Ezjsonm;
-  let caveats = get_caveats(json);
-  switch (caveats) {
-  | [ `A([x, ..._]), ..._ ] => string_of_optional_caveat(x)
-  | _ => None;
-  };
 };
 
 let handle_token = (ctx, prov, json) => {
@@ -369,20 +358,13 @@ let handle_token = (ctx, prov, json) => {
       if (route_exists(record, json)) {
         let path = get_string(find(json, ["path"]));
         let meth = get_string(find(json, ["method"]));
-        switch (get_optional_caveat(permissions)) {
-        | Some(x) => {
-            switch (get_optional_caveat(wrap(json))) {
-            | Some(y) when x == y => mint_token(~path=path, ~meth=meth, ~optional=Some(x), ~target=target, ~key=secret, ())
-            | _ => Ack.Code(129);
-            };
-          }
-        | None =>  {
-          switch (get_optional_caveat(wrap(json))) {
-            | Some(y) => Ack.Code(129)
-            | _ => mint_token(~path=path, ~meth=meth, ~target=target, ~key=secret, ());
-            };
-          }
-        };
+        let permission_caveats = get_list((x) => find(x,["caveats"]), permissions);
+        let route_caveat = find(json,["caveats"]);
+        if (List.exists(x => x == route_caveat, permission_caveats)) {
+          mint_token(~path=path, ~meth=meth, ~optional=string_of_caveat(route_caveat), ~target=target, ~key=secret, ());
+        } else {
+          Ack.Code(129);
+        }
       } else {
         Ack.Code(129);
       }
